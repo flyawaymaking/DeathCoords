@@ -1,0 +1,17 @@
+name: DeathCoords
+main: com.flyaway.deathcoords.DeathCoords
+version: 1.0.0
+api-version: 1.21
+author: FlyAwayMaking
+website: https://github.com/flyawaymaking
+description: Показывает координаты смерти игрока и редактирует сообщения о смерти
+
+commands:
+  deathcoords:
+    description: Управление плагином DeathCoords
+    usage: /<command> reload
+
+permissions:
+  deathcoords.reload:
+    description: Перезагрузка конфига плагина
+    default: op

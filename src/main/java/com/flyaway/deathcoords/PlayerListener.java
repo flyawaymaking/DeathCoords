@@ -8,6 +8,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.projectiles.ProjectileSource;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -54,95 +55,122 @@ public class PlayerListener implements Listener {
             return null;
         }
 
-        // Проверяем убийцу-игрока
-        if (player.getKiller() instanceof Player) {
+        // Проверяем убийцу-игрока (включая снаряды от игроков)
+        if (isKilledByPlayer(player)) {
             return "player";
         }
 
-        // Проверяем причину повреждения
+        if (lastDamage instanceof EntityDamageByEntityEvent entityEvent) {
+            Entity damager = entityEvent.getDamager();
+            String mobType = getMobDeathType(damager);
+            if (mobType != null) {
+                return mobType;
+            }
+        }
+
         EntityDamageEvent.DamageCause cause = lastDamage.getCause();
 
         switch (cause) {
-            case ENTITY_ATTACK:
-                if (lastDamage instanceof EntityDamageByEntityEvent) {
-                    Entity attacker = ((EntityDamageByEntityEvent) lastDamage).getDamager();
-                    return getMobDeathType(attacker);
-                }
-                return null;
-
             case FALL:
                 return "fall";
-
             case FIRE:
             case FIRE_TICK:
             case LAVA:
                 return "fire";
-
             case DROWNING:
                 return "drown";
-
             case STARVATION:
                 return "starvation";
-
             case MAGIC:
             case POISON:
             case WITHER:
                 return "magic";
-
             case CONTACT:
                 return "cactus";
-
             case SUFFOCATION:
                 return "suffocation";
-
             case BLOCK_EXPLOSION:
             case ENTITY_EXPLOSION:
                 return "explosion";
-
             case LIGHTNING:
                 return "lightning";
-
             default:
                 return null;
         }
     }
 
-    // 🔴 ОПРЕДЕЛЕНИЕ ТИПА СМЕРТИ ОТ МОБОВ
+    private boolean isKilledByPlayer(Player player) {
+        // Прямой убийца-игрок
+        if (player.getKiller() instanceof Player) {
+            return true;
+        }
+
+        // Снаряд от игрока
+        EntityDamageEvent lastDamage = player.getLastDamageCause();
+        if (lastDamage instanceof EntityDamageByEntityEvent entityEvent) {
+            Entity damager = entityEvent.getDamager();
+            if (damager instanceof Projectile projectile) {
+                ProjectileSource shooter = projectile.getShooter();
+                return shooter instanceof Player;
+            }
+        }
+
+        return false;
+    }
+
     private String getMobDeathType(Entity attacker) {
-        if (attacker instanceof Skeleton) return "skeleton";
-        else if (attacker instanceof Zombie) return "zombie";
-        else if (attacker instanceof Creeper) return "creeper";
-        else if (attacker instanceof Enderman) return "enderman";
-        else if (attacker instanceof Spider) return "spider";
-        else if (attacker instanceof CaveSpider) return "spider";
-        else if (attacker instanceof Blaze) return "blaze";
-        else if (attacker instanceof Ghast) return "ghast";
-        else if (attacker instanceof Slime) return "slime";
-        else if (attacker instanceof MagmaCube) return "slime";
-        else if (attacker instanceof Witch) return "witch";
-        else if (attacker instanceof Guardian) return "guardian";
-        else if (attacker instanceof Phantom) return "phantom";
-        else return null; // ДЛЯ НЕИЗВЕСТНЫХ МОБОВ ВОЗВРАЩАЕМ NULL
+        // Если это снаряд - определяем стрелка
+        if (attacker instanceof Projectile projectile) {
+            ProjectileSource shooter = projectile.getShooter();
+            if (shooter instanceof LivingEntity livingShooter) {
+                return getMobTypeFromEntity(livingShooter);
+            }
+            return null;
+        }
+
+        // Если это живая сущность (моб)
+        if (attacker instanceof LivingEntity livingAttacker) {
+            return getMobTypeFromEntity(livingAttacker);
+        }
+
+        return null;
+    }
+
+    private String getMobTypeFromEntity(LivingEntity entity) {
+        // Используем встроенное имя типа сущности в нижнем регистре
+        return entity.getType().name().toLowerCase();
     }
 
     // ПОЛУЧЕНИЕ ИМЕНИ УБИЙЦЫ
     private String getKillerName(PlayerDeathEvent event) {
         Player player = event.getEntity();
 
-        // Если убийца - игрок
-        if (player.getKiller() instanceof Player) {
-            return player.getKiller().getName();
+        // Прямой убийца-игрок
+        Player killer = player.getKiller();
+        if (killer != null) {
+            return killer.getName();
         }
+
+        // Убийца через снаряд
+        EntityDamageEvent lastDamage = player.getLastDamageCause();
+        if (lastDamage instanceof EntityDamageByEntityEvent entityEvent) {
+            Entity damager = entityEvent.getDamager();
+            if (damager instanceof Projectile projectile) {
+                ProjectileSource shooter = projectile.getShooter();
+                if (shooter instanceof Player playerShooter) {
+                    return playerShooter.getName();
+                }
+            }
+        }
+
         return null;
     }
 
-    // СОЗДАНИЕ СООБЩЕНИЯ О СМЕРТИ
     private Component createDeathBroadcast(Player player, String deathType, String killerName) {
         String message = configManager.getRandomDeathMessage(deathType, player.getName(), killerName);
         return Component.text(message, NamedTextColor.GRAY);
     }
 
-    // ПЕРСОНАЛЬНОЕ СООБЩЕНИЕ С КООРДИНАТАМИ
     private void sendPersonalDeathMessage(Player player, Location loc) {
         Component coordsMessage = Component.text()
                 .append(Component.text("💀 Координаты смерти: ", NamedTextColor.RED))

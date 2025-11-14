@@ -40,7 +40,6 @@ public class ConfigManager {
         plugin.getLogger().info("Загружено " + deathMessages.size() + " типов сообщений о смерти");
     }
 
-    // ПРОВЕРКА ЕСТЬ ЛИ СООБЩЕНИЕ ДЛЯ ДАННОГО ТИПА СМЕРТИ
     public boolean hasDeathMessage(String deathType) {
         return deathMessages.containsKey(deathType) && !deathMessages.get(deathType).isEmpty();
     }

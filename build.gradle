@@ -2,8 +2,8 @@ plugins {
     id 'java'
 }
 
-group = 'com.flyaway.deathcoords'
-version = '1.0.1'
+group = 'com.flyaway.deathmessages'
+version = '1.1.0'
 
 java {
     toolchain {
@@ -24,5 +24,5 @@ dependencies {
 }
 
 tasks.jar {
-    archiveBaseName.set("DeathCoords")
+    archiveBaseName.set("DeathMessages")
 }

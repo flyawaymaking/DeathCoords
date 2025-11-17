@@ -1,5 +1,6 @@
-package com.flyaway.deathcoords;
+package com.flyaway.deathmessages;
 
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.*;
@@ -12,11 +13,13 @@ import org.bukkit.projectiles.ProjectileSource;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class PlayerListener implements Listener {
     private final ConfigManager configManager;
+    private final MiniMessage miniMessage = MiniMessage.miniMessage();
 
     public PlayerListener(ConfigManager configManager) {
         this.configManager = configManager;
@@ -28,25 +31,20 @@ public class PlayerListener implements Listener {
         Location loc = player.getLocation();
 
         String deathType = determineDeathType(event);
-        String killerName = getKillerName(event);
 
-        // ЕСЛИ ЕСТЬ КАСТОМНОЕ СООБЩЕНИЕ ДЛЯ ЭТОГО ТИПА - ИСПОЛЬЗУЕМ ЕГО
         if (deathType != null && configManager.hasDeathMessage(deathType)) {
-            // Отключаем стандартное сообщение
             event.deathMessage(null);
+            String killerName = getKillerName(event);
 
-            // Создаем красивое сообщение для всех игроков
-            Component deathBroadcast = createDeathBroadcast(player, deathType, killerName);
+            Component deathBroadcast = configManager.getRandomDeathMessage(deathType, player.getName(), killerName);
             Bukkit.broadcast(deathBroadcast);
         }
 
-        // Персональное сообщение с координатами для умершего игрока
         if (configManager.showDeathCoordinates()) {
             sendPersonalDeathMessage(player, loc);
         }
     }
 
-    // ОПРЕДЕЛЕНИЕ ТИПА СМЕРТИ
     private String determineDeathType(PlayerDeathEvent event) {
         Player player = event.getEntity();
         EntityDamageEvent lastDamage = player.getLastDamageCause();
@@ -55,7 +53,6 @@ public class PlayerListener implements Listener {
             return null;
         }
 
-        // Проверяем убийцу-игрока (включая снаряды от игроков)
         if (isKilledByPlayer(player)) {
             return "player";
         }
@@ -70,38 +67,18 @@ public class PlayerListener implements Listener {
 
         EntityDamageEvent.DamageCause cause = lastDamage.getCause();
 
-        switch (cause) {
-            case FALL:
-                return "fall";
-            case FIRE:
-            case FIRE_TICK:
-            case LAVA:
-                return "fire";
-            case DROWNING:
-                return "drown";
-            case STARVATION:
-                return "starvation";
-            case MAGIC:
-            case POISON:
-            case WITHER:
-                return "magic";
-            case CONTACT:
-                return "cactus";
-            case SUFFOCATION:
-                return "suffocation";
-            case BLOCK_EXPLOSION:
-            case ENTITY_EXPLOSION:
-                return "explosion";
-            case LIGHTNING:
-                return "lightning";
-            default:
-                return null;
-        }
+        return switch (cause) {
+            case FIRE, FIRE_TICK, LAVA -> "fire";
+            case MAGIC, POISON -> "magic";
+            case CONTACT -> "cactus";
+            case BLOCK_EXPLOSION, ENTITY_EXPLOSION -> "explosion";
+            default -> cause.name().toLowerCase();
+        };
     }
 
     private boolean isKilledByPlayer(Player player) {
         // Прямой убийца-игрок
-        if (player.getKiller() instanceof Player) {
+        if (player.getKiller() != null) {
             return true;
         }
 
@@ -119,6 +96,10 @@ public class PlayerListener implements Listener {
     }
 
     private String getMobDeathType(Entity attacker) {
+        // Если это живая сущность (моб)
+        if (attacker instanceof LivingEntity livingAttacker) {
+            return getMobTypeFromEntity(livingAttacker);
+        }
         // Если это снаряд - определяем стрелка
         if (attacker instanceof Projectile projectile) {
             ProjectileSource shooter = projectile.getShooter();
@@ -126,11 +107,6 @@ public class PlayerListener implements Listener {
                 return getMobTypeFromEntity(livingShooter);
             }
             return null;
-        }
-
-        // Если это живая сущность (моб)
-        if (attacker instanceof LivingEntity livingAttacker) {
-            return getMobTypeFromEntity(livingAttacker);
         }
 
         return null;
@@ -166,40 +142,32 @@ public class PlayerListener implements Listener {
         return null;
     }
 
-    private Component createDeathBroadcast(Player player, String deathType, String killerName) {
-        String message = configManager.getRandomDeathMessage(deathType, player.getName(), killerName);
-        return Component.text(message, NamedTextColor.GRAY);
-    }
-
     private void sendPersonalDeathMessage(Player player, Location loc) {
-        Component coordsMessage = Component.text()
-                .append(Component.text("💀 Координаты смерти: ", NamedTextColor.RED))
-                .append(Component.text("X: " + loc.getBlockX() + " ", NamedTextColor.YELLOW))
-                .append(Component.text("Y: " + loc.getBlockY() + " ", NamedTextColor.YELLOW))
-                .append(Component.text("Z: " + loc.getBlockZ(), NamedTextColor.YELLOW))
-                .build();
+        Map<String, String> coordsPlaceholders = new HashMap<>();
+        coordsPlaceholders.put("x", String.valueOf(loc.getBlockX()));
+        coordsPlaceholders.put("y", String.valueOf(loc.getBlockY()));
+        coordsPlaceholders.put("z", String.valueOf(loc.getBlockZ()));
+
+        String personalMessage = configManager.getMessage("personal-message", coordsPlaceholders);
 
         if (configManager.showBackButton() && hasBackOnDeathPermission(player)) {
-            Component fullMessage = Component.text()
-                    .append(coordsMessage)
-                    .append(Component.newline())
-                    .append(createBackButton())
-                    .build();
-            player.sendMessage(fullMessage);
-        } else {
-            player.sendMessage(coordsMessage);
+            String backButton = configManager.getMessage("back-button", null);
+            String backHover = configManager.getMessage("back-hover", null);
+            String button = createButton(backButton, backHover);
+            personalMessage = personalMessage + "<newline>" + button;
         }
+        configManager.sendRawMessage(player, personalMessage);
     }
 
     private boolean hasBackOnDeathPermission(Player player) {
         return player.hasPermission("essentials.back.ondeath");
     }
 
-    private Component createBackButton() {
-        return Component.text()
-                .append(Component.text("[✨ ВЕРНУТЬСЯ]", NamedTextColor.GREEN, TextDecoration.BOLD))
+    private String createButton(String button, String hover) {
+        Component component = Component.text()
+                .append(miniMessage.deserialize(button))
                 .clickEvent(ClickEvent.runCommand("/back"))
-                .hoverEvent(Component.text("Нажмите чтобы вернуться к месту смерти", NamedTextColor.GRAY))
-                .build();
+                .hoverEvent(miniMessage.deserialize(hover)).build();
+        return miniMessage.serialize(component);
     }
 }

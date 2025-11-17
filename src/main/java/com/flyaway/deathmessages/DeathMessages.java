@@ -1,26 +1,25 @@
-package com.flyaway.deathcoords;
+package com.flyaway.deathmessages;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
-public class DeathCoords extends JavaPlugin {
-    private ConfigManager configManager;
+public class DeathMessages extends JavaPlugin {
 
     @Override
     public void onEnable() {
         // Инициализируем менеджеры
-        this.configManager = new ConfigManager(this);
+        ConfigManager configManager = new ConfigManager(this);
 
         // Регистрируем события
         getServer().getPluginManager().registerEvents(new PlayerListener(configManager), this);
 
         // Команда для перезагрузки конфига
-        getCommand("deathcoords").setExecutor(new ReloadCommand(configManager));
+        getCommand("deathmessages").setExecutor(new ReloadCommand(configManager));
 
-        getLogger().info("DeathCoords включён!");
+        getLogger().info("DeathMessages включён!");
     }
 
     @Override
     public void onDisable() {
-        getLogger().info("DeathCoords выключен!");
+        getLogger().info("DeathMessages выключен!");
     }
 }

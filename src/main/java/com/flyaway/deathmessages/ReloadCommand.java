@@ -1,11 +1,8 @@
-package com.flyaway.deathcoords;
+package com.flyaway.deathmessages;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 
 public class ReloadCommand implements CommandExecutor {
     private final ConfigManager configManager;
@@ -17,17 +14,17 @@ public class ReloadCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
-            if (!sender.hasPermission("deathcoords.reload")) {
-                sender.sendMessage(Component.text("У вас нет прав для этой команды!", NamedTextColor.RED));
+            if (!sender.hasPermission("deathmessages.reload")) {
+                configManager.sendMessage(sender, "reload.no-permission");
                 return true;
             }
 
             configManager.reloadConfig();
-            sender.sendMessage(Component.text("Конфиг DeathCoords перезагружен!", NamedTextColor.GREEN));
+            configManager.sendMessage(sender, "reload.success");
             return true;
         }
 
-        sender.sendMessage(Component.text("Использование: /deathcoords reload", NamedTextColor.YELLOW));
+        configManager.sendMessage(sender, "reload.usage");
         return true;
     }
 }

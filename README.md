@@ -1,6 +1,6 @@
 # DeathMessages
 
-DeathMessages — лёгкий плагин для Minecraft 1.21.8 (Paper), который улучшает сообщения о смерти игроков.
+DeathMessages — лёгкий плагин для Minecraft 1.21.10 (Paper), который улучшает сообщения о смерти игроков.
 Он показывает кастомные тексты смерти, координаты места гибели и добавляет кнопку [✨ Вернуться] для игроков с разрешением essentials.back.ondeath.
 
 ---
@@ -91,7 +91,7 @@ death-messages:
 
 ## Требования
 
-- Minecraft Paper 1.21.8
+- Minecraft Paper 1.21.10
 - Java 21
 - (Опционально) EssentialsX для команды /back
 

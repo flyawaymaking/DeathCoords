@@ -18,7 +18,6 @@ DeathMessages — лёгкий плагин для Minecraft 1.21+ (Paper), ко
 ## Конфигурация (config.yml)
 
 ```yaml
-# Настройки
 settings:
   # Показывать координаты смерти игроку
   show-death-coordinates: true

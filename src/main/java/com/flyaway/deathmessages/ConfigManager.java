@@ -5,6 +5,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
@@ -29,7 +30,7 @@ public class ConfigManager {
     public void loadConfig() {
         plugin.saveDefaultConfig();
         config = plugin.getConfig();
-        this.prefix = plugin.getConfig().getString("messages.prefix", "<gray>[<red>DeathMessages</red</gray>");
+        this.prefix = plugin.getConfig().getString("messages.prefix", "<gray>[<red>DeathMessages</red>]</gray>");
         this.deathPrefix = plugin.getConfig().getString("death-messages.prefix", "<gray>");
         loadDeathMessages();
     }
@@ -83,7 +84,7 @@ public class ConfigManager {
         return deathMessages.containsKey(deathType) && !deathMessages.get(deathType).isEmpty();
     }
 
-    public Component getRandomDeathMessage(String deathType, String playerName, String killerName) {
+    public Component getRandomDeathMessage(String deathType, String playerName, Player killer) {
         List<String> messages = deathMessages.get(deathType);
 
         if (messages == null || messages.isEmpty()) {
@@ -93,11 +94,13 @@ public class ConfigManager {
         String message = messages.get(random.nextInt(messages.size()));
         message = message.replace("{player}", playerName);
 
-        if (killerName != null) {
-            message = message.replace("{killer}", killerName);
+        if (killer != null) {
+            String healthStr = String.format("%.1f", killer.getHealth());
+
+            message = message.replace("{killer}", killer.getName()).replace("{killer_health}", healthStr);
         }
 
-        return miniMessage.deserialize(deathPrefix +message);
+        return miniMessage.deserialize(deathPrefix + message);
     }
 
     public boolean showDeathCoordinates() {

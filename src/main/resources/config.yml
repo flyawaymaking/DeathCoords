@@ -1,4 +1,6 @@
-# Настройки
+# Не изменяйте это значение!
+config-version: 1
+
 settings:
   # Показывать координаты смерти игроку
   show-death-coordinates: true

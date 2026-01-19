@@ -5,15 +5,17 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 public class ConfigManager {
+    private static final int CURRENT_CONFIG_VERSION = 1;
+
     private final DeathMessages plugin;
     private FileConfiguration config;
     private final Random random = new Random();
@@ -30,9 +32,54 @@ public class ConfigManager {
     public void loadConfig() {
         plugin.saveDefaultConfig();
         config = plugin.getConfig();
-        this.prefix = plugin.getConfig().getString("messages.prefix", "<gray>[<red>DeathMessages</red>]</gray>");
-        this.deathPrefix = plugin.getConfig().getString("death-messages.prefix", "<gray>");
+
+        int version = config.getInt("config-version", 0);
+        if (version < CURRENT_CONFIG_VERSION) {
+            plugin.getLogger().info("Обновление config.yml с версии " + version + " до " + CURRENT_CONFIG_VERSION);
+            FileConfiguration defaultConfig = loadDefaultConfig();
+            mergeSection(defaultConfig, config);
+            config.set("config-version", CURRENT_CONFIG_VERSION);
+            plugin.saveConfig();
+        }
+
+        this.prefix = config.getString("messages.prefix", "<gray>[<red>DeathMessages</red>]</gray>");
+        this.deathPrefix = config.getString("death-messages.prefix", "<gray>");
         loadDeathMessages();
+    }
+
+    private FileConfiguration loadDefaultConfig() {
+        YamlConfiguration defaultConfig = new YamlConfiguration();
+        try (InputStreamReader reader = new InputStreamReader(
+                Objects.requireNonNull(plugin.getResource("config.yml")), StandardCharsets.UTF_8)
+        ) {
+            defaultConfig.load(reader);
+        } catch (Exception e) {
+            plugin.getLogger().severe("Не удалось загрузить дефолтный config.yml");
+        }
+        return defaultConfig;
+    }
+
+    private void mergeSection(ConfigurationSection source, ConfigurationSection target) {
+        for (String key : source.getKeys(false)) {
+            Object sourceValue = source.get(key);
+
+            if (source.isConfigurationSection(key)) {
+                ConfigurationSection sourceSub = source.getConfigurationSection(key);
+                if (sourceSub == null) continue;
+
+                ConfigurationSection targetSub = target.getConfigurationSection(key);
+                if (targetSub == null) {
+                    targetSub = target.createSection(key);
+                }
+
+                mergeSection(sourceSub, targetSub);
+
+            } else {
+                if (!target.isSet(key)) {
+                    target.set(key, sourceValue);
+                }
+            }
+        }
     }
 
     private void loadDeathMessages() {
